@@ -137,7 +137,18 @@ def render_email(papers:list[ArxivPaper]):
             affiliations = 'Unknown Affiliation'
         parts.append(get_block_html(p.title, authors,rate,p.arxiv_id ,p.tldr, p.pdf_url, p.code_url, affiliations))
 
-    content = '<br>' + '</br><br>'.join(parts) + '</br>'
+    # content = '<br>' + '</br><br>'.join(parts) + '</br>'
+      count_html = f"""
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; margin-bottom: 16px;">
+          <tr>
+            <td style="font-size: 18px; font-weight: bold; color: #333;">
+              🎯 Total Papers Today: {len(papers)}
+            </td>
+          </tr>
+        </table>
+      """
+      content = count_html + '<br>' + '</br><br>'.join(parts) + '</br>'
+
     return framework.replace('__CONTENT__', content)
 
 def send_email(sender:str, receiver:str, password:str,smtp_server:str,smtp_port:int, html:str,):
