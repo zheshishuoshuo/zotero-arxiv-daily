@@ -117,39 +117,94 @@ def get_stars(score:float):
         return '<div class="star-wrapper">'+full_star * full_star_num + half_star * half_star_num + '</div>'
 
 
-def render_email(papers:list[ArxivPaper]):
-    parts = []
-    if len(papers) == 0 :
-        return framework.replace('__CONTENT__', get_empty_html())
+# def render_email(papers:list[ArxivPaper]):
+#     parts = []
+#     if len(papers) == 0 :
+#         return framework.replace('__CONTENT__', get_empty_html())
     
-    for p in tqdm(papers,desc='Rendering Email'):
-        rate = get_stars(p.score)
+#     for p in tqdm(papers,desc='Rendering Email'):
+#         rate = get_stars(p.score)
+#         authors = [a.name for a in p.authors[:5]]
+#         authors = ', '.join(authors)
+#         if len(p.authors) > 5:
+#             authors += ', ...'
+#         if p.affiliations is not None:
+#             affiliations = p.affiliations[:5]
+#             affiliations = ', '.join(affiliations)
+#             if len(p.affiliations) > 5:
+#                 affiliations += ', ...'
+#         else:
+#             affiliations = 'Unknown Affiliation'
+#         parts.append(get_block_html(p.title, authors,rate,p.arxiv_id ,p.tldr, p.pdf_url, p.code_url, affiliations))
+
+#     # content = '<br>' + '</br><br>'.join(parts) + '</br>'
+#       count_html = f"""
+#         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; margin-bottom: 16px;">
+#           <tr>
+#             <td style="font-size: 18px; font-weight: bold; color: #333;">
+#               🎯 Total Papers Today: {len(papers)}
+#             </td>
+#           </tr>
+#         </table>
+#       """
+#       content = count_html + '<br>' + '</br><br>'.join(parts) + '</br>'
+
+#     return framework.replace('__CONTENT__', content)
+
+
+def render_email(papers: list[ArxivPaper]):
+    parts = []
+    if len(papers) == 0:
+        return framework.replace('__CONTENT__', get_empty_html())
+
+    # 星级计数初始化
+    star_count = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0, 0: 0}
+
+    for p in tqdm(papers, desc='Rendering Email'):
+        rate_html = get_stars(p.score)
+
+        # 星数逻辑：和 get_stars 一致
+        full_star = int((p.score - 6) / 0.2) if 6 < p.score < 8 else 5 if p.score >= 8 else 0
+        full_star = min(full_star, 5)
+        star_count[full_star] += 1
+
         authors = [a.name for a in p.authors[:5]]
         authors = ', '.join(authors)
         if len(p.authors) > 5:
             authors += ', ...'
+        affiliations = 'Unknown Affiliation'
         if p.affiliations is not None:
-            affiliations = p.affiliations[:5]
-            affiliations = ', '.join(affiliations)
+            affiliations = ', '.join(p.affiliations[:5])
             if len(p.affiliations) > 5:
                 affiliations += ', ...'
-        else:
-            affiliations = 'Unknown Affiliation'
-        parts.append(get_block_html(p.title, authors,rate,p.arxiv_id ,p.tldr, p.pdf_url, p.code_url, affiliations))
+        parts.append(get_block_html(p.title, authors, rate_html, p.arxiv_id, p.tldr, p.pdf_url, p.code_url, affiliations))
 
-    # content = '<br>' + '</br><br>'.join(parts) + '</br>'
-      count_html = f"""
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; margin-bottom: 16px;">
-          <tr>
-            <td style="font-size: 18px; font-weight: bold; color: #333;">
-              🎯 Total Papers Today: {len(papers)}
-            </td>
-          </tr>
-        </table>
-      """
-      content = count_html + '<br>' + '</br><br>'.join(parts) + '</br>'
+    # 顶部统计部分
+    summary_html = f"""
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-family: Arial, sans-serif; margin-bottom: 16px;">
+      <tr>
+        <td style="font-size: 18px; font-weight: bold; color: #333;">
+          🎯 Total Papers Today: {len(papers)}
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size: 14px; color: #666;">
+          ⭐⭐⭐⭐⭐ {star_count[5]} &nbsp;&nbsp;
+          ⭐⭐⭐⭐ {star_count[4]} &nbsp;&nbsp;
+          ⭐⭐⭐ {star_count[3]} &nbsp;&nbsp;
+          ⭐⭐ {star_count[2]} &nbsp;&nbsp;
+          ⭐ {star_count[1]} &nbsp;&nbsp;
+          🚫 No Star: {star_count[0]}
+        </td>
+      </tr>
+    </table>
+    """
 
+    content = summary_html + '<br>' + '</br><br>'.join(parts) + '</br>'
     return framework.replace('__CONTENT__', content)
+
+
+
 
 def send_email(sender:str, receiver:str, password:str,smtp_server:str,smtp_port:int, html:str,):
     def _format_addr(s):
