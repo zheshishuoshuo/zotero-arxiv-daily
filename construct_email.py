@@ -58,6 +58,21 @@ def get_empty_html():
   """
   return block_template
 
+
+def get_star_number(score: float):
+    low = 6
+    high = 8
+    if score <= low:
+        return 0
+    elif score >= high:
+        return 5
+    else:
+        interval = (high - low) / 10
+        star_num = math.ceil((score - low) / interval)  # 1–10
+        return star_num / 2  # e.g., 2.5 stars
+
+
+
 def get_block_html(title:str, authors:str, rate:str,arxiv_id:str, abstract:str, pdf_url:str, code_url:str=None, affiliations:str=None):
     code = f'<a href="{code_url}" style="display: inline-block; text-decoration: none; font-size: 14px; font-weight: bold; color: #fff; background-color: #5bc0de; padding: 8px 16px; border-radius: 4px; margin-left: 8px;">Code</a>' if code_url else ''
     block_template = """
@@ -157,26 +172,52 @@ def render_email(papers: list[ArxivPaper]):
     if len(papers) == 0:
         return framework.replace('__CONTENT__', get_empty_html())
 
-    # 星级计数初始化
-    star_count = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0, 0: 0}
+    # # 星级计数初始化
+    # star_count = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0, 0: 0}
 
+    # for p in tqdm(papers, desc='Rendering Email'):
+    #     rate_html = get_stars(p.score)
+
+    #     # 星数逻辑：和 get_stars 一致
+    #     full_star = int((p.score - 6) / 0.2) if 6 < p.score < 8 else 5 if p.score >= 8 else 0
+    #     full_star = min(full_star, 5)
+    #     star_count[full_star] += 1
+
+    star_count = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0, 0: 0}
+    
     for p in tqdm(papers, desc='Rendering Email'):
         rate_html = get_stars(p.score)
-
-        # 星数逻辑：和 get_stars 一致
-        full_star = int((p.score - 6) / 0.2) if 6 < p.score < 8 else 5 if p.score >= 8 else 0
-        full_star = min(full_star, 5)
-        star_count[full_star] += 1
+        
+        # 使用 get_star_number
+        star_score = get_star_number(p.score)
+        rounded_star = math.floor(star_score)  # 保守地向下取整计入统计
+        star_count[rounded_star] += 1
 
         authors = [a.name for a in p.authors[:5]]
         authors = ', '.join(authors)
         if len(p.authors) > 5:
             authors += ', ...'
         affiliations = 'Unknown Affiliation'
-        if p.affiliations is not None:
-            affiliations = ', '.join(p.affiliations[:5])
-            if len(p.affiliations) > 5:
-                affiliations += ', ...'
+
+
+      
+        # if p.affiliations is not None:
+        #     affiliations = ', '.join(p.affiliations[:5])
+        #     if len(p.affiliations) > 5:
+        #         affiliations += ', ...'
+
+        try:
+            if p.affiliations is not None:
+                affiliations = ', '.join(p.affiliations[:5])
+                if len(p.affiliations) > 5:
+                    affiliations += ', ...'
+            else:
+                affiliations = 'Unknown Affiliation'
+        except Exception as e:
+            logger.warning(f"Failed to get affiliations for {p.arxiv_id}: {e}")
+            affiliations = 'Unknown Affiliation'
+
+      
         parts.append(get_block_html(p.title, authors, rate_html, p.arxiv_id, p.tldr, p.pdf_url, p.code_url, affiliations))
 
     # 顶部统计部分
